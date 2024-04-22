@@ -5,7 +5,12 @@ import { visit } from 'unist-util-visit'
 import * as acorn from 'acorn'
 import * as astring from 'astring'
 import type { Root } from 'hast'
-import { DECRYPTION, INITIAL_STATE_REF, WEREAD_URL, isUtilsScriptUrl } from './common'
+import {
+  DECRYPTION,
+  INITIAL_STATE_REF,
+  WEREAD_URL,
+  isUtilsScriptUrl,
+} from './common'
 
 export const overrideDocument = async (url: string, body: string) => {
   if (!url.startsWith(WEREAD_URL)) return body
@@ -27,7 +32,7 @@ export const overrideDocument = async (url: string, body: string) => {
             const expressionStatement = acorn
               .parse(
                 `window.${INITIAL_STATE_REF} = Object.assign({}, window.__INITIAL_STATE__);\n\n`,
-                { ecmaVersion: 6 },
+                { ecmaVersion: 6 }
               )
               .body.at(0)
             if (expressionStatement) {
@@ -51,8 +56,9 @@ export const overrideUtils = (url: string, body: string) => {
 
   if (!isUtils) return body
 
-  const search = "['decryption']="
-  const startIndex = body.indexOf(search)
+  const search = "[_0x610b('0x63')]="
+  const suffix = 'function'
+  const startIndex = body.indexOf(search + suffix)
 
   if (startIndex === -1) return body
 

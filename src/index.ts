@@ -1,4 +1,4 @@
-import puppeteerVanilla, { type Cookie } from 'puppeteer'
+import puppeteerVanilla, { type Cookie, type Browser } from 'puppeteer'
 import { addExtra } from 'puppeteer-extra'
 import StealthPlugin from 'puppeteer-extra-plugin-stealth'
 import prompts from 'prompts'
@@ -14,10 +14,10 @@ import {
 import { overrideDocument, overrideUtils } from './override'
 import { Cache } from './cache'
 
-const cache = new Cache('weread')
-
 // @ts-ignore
 const puppeteer = addExtra(puppeteerVanilla).use(StealthPlugin())
+
+const cache = new Cache('weread')
 
 interface State {
   reader: {
@@ -40,12 +40,30 @@ interface Decryption {
   ): string
 }
 
+const isChromeHeadless = async (browser: Browser) => {
+  const page = await browser.newPage()
+
+  await page.goto('https://arh.antoinevastel.com/bots/areyouheadless')
+
+  const textSelector = await page.waitForSelector('#res')
+  const fullTitle = await textSelector?.evaluate(el => el.textContent)
+
+  await page.close()
+
+  return fullTitle !== 'You are not Chrome headless'
+}
+
 const main = async () => {
-  // Launch the browser and open a new blank page
   const browser = await puppeteer.launch({
-    headless: false,
+    defaultViewport: { width: 1440, height: 768 },
     executablePath: '/usr/bin/chromium',
+    headless: false,
   })
+
+  const areYouChromeHeadless = await isChromeHeadless(browser)
+  if (areYouChromeHeadless) {
+    console.log('You are Chrome headless.')
+  }
 
   const page = await browser.newPage()
 
@@ -117,30 +135,6 @@ const main = async () => {
       interceptResponse,
     })
   })
-
-  // Navigate the page to a URL
-  await page.goto('https://arh.antoinevastel.com/bots/areyouheadless')
-
-  // Set screen size
-  await page.setViewport({ width: 1080, height: 1024 })
-
-  // Type into search box
-  // await page.type('.devsite-search-field', 'automate beyond recorder')
-
-  // Wait and click on first result
-  // const searchResultSelector = '.devsite-result-item-link'
-  // await page.waitForSelector(searchResultSelector)
-  // await page.click(searchResultSelector)
-
-  // Locate the full title with a unique string
-  const textSelector = await page.waitForSelector('#res')
-  const fullTitle = await textSelector?.evaluate(el => el.textContent)
-
-  if (fullTitle !== 'You are not Chrome headless') {
-    console.log(fullTitle)
-
-    return
-  }
 
   await page.goto(
     'https://weread.qq.com/web/reader/e6f320e0813ab8b1bg019924k37632cd021737693cfc7149'

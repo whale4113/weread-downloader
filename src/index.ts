@@ -77,7 +77,10 @@ const main = async () => {
     const interceptResponse = isDocument || isUtilsScript
 
     if (responseErrorReason !== undefined || responseStatusCode !== undefined) {
-      if (interceptResponse) {
+      const isRedirect =
+        responseStatusCode === 301 || responseStatusCode === 302
+
+      if (!isRedirect && interceptResponse) {
         const responseBody = await client.send('Fetch.getResponseBody', {
           requestId,
         })

@@ -1,8 +1,10 @@
-import puppeteerVanilla, { type Cookie, type Browser } from 'puppeteer'
+import puppeteerVanilla, { type Cookie, Browser, type Page } from 'puppeteer'
 import { addExtra } from 'puppeteer-extra'
 import StealthPlugin from 'puppeteer-extra-plugin-stealth'
+import { load } from 'cheerio'
 import prompts from 'prompts'
-import fs from 'node:fs'
+import fs from 'node:fs/promises'
+import { existsSync } from 'node:fs'
 import path from 'path'
 import {
   DECRYPTION,
@@ -13,21 +15,40 @@ import {
 } from './common'
 import { overrideDocument, overrideUtils } from './override'
 import { Cache } from './cache'
+import { SECOND } from './datetime'
 
 // @ts-ignore
 const puppeteer = addExtra(puppeteerVanilla).use(StealthPlugin())
 
 const cache = new Cache('weread')
 
+const timeout = (timeout: number) =>
+  new Promise<void>(resolve => {
+    setTimeout(() => {
+      resolve()
+    }, timeout)
+  })
+
+interface BookInfo {
+  title: string
+}
+
+interface ChapterInfo {
+  level: number
+  title: string
+}
+
 interface State {
   reader: {
     bookId: string
+    chapterInfos: ChapterInfo[]
     chapterContentState: 'DONE' | string
     chapterContentHtml: { value: string }[]
     currentChapter: {
       chapterUid: number
     }
     currentSectionIdx: number
+    bookInfo: BookInfo
   }
 }
 
@@ -53,18 +74,22 @@ const isChromeHeadless = async (browser: Browser) => {
   return fullTitle !== 'You are not Chrome headless'
 }
 
-const main = async () => {
-  const browser = await puppeteer.launch({
-    defaultViewport: { width: 1440, height: 768 },
-    executablePath: '/usr/bin/chromium',
-    headless: false,
-  })
-
-  const areYouChromeHeadless = await isChromeHeadless(browser)
-  if (areYouChromeHeadless) {
-    console.log('You are Chrome headless.')
+const isLogin = async (page: Page) => {
+  try {
+    const el = await page.waitForSelector('.wr_avatar', {
+      timeout: 4 * SECOND,
+    })
+    return el !== null
+  } catch {
+    return false
   }
+}
 
+const isBookDetailPage = (url: string) => {
+  return url.includes('bookDetail')
+}
+
+const createPage = async (browser: Browser) => {
   const page = await browser.newPage()
 
   const cookies = await cache.get<Cookie[]>('cookies')
@@ -136,84 +161,314 @@ const main = async () => {
     })
   })
 
-  await page.goto(
-    'https://weread.qq.com/web/reader/e6f320e0813ab8b1bg019924k37632cd021737693cfc7149'
-  )
+  return page
+}
 
-  const { login } = await prompts({
-    type: 'confirm',
-    name: 'login',
-    message: 'Please login.',
+const openCatalogue = async (page: Page): Promise<boolean> => {
+  const catalogueButton = await page.waitForSelector(
+    '.readerControls_item.catalog'
+  )
+  if (!catalogueButton) {
+    console.log('Failed to find catalogue button.')
+
+    return false
+  }
+
+  await catalogueButton.click()
+
+  return true
+}
+
+const downloadChapter = async (options: {
+  page: Page
+  outputFilePath: string
+  chapterIndex: number
+  chapterTitle: string
+  maxTimeout: number
+}) => {
+  const { page, outputFilePath, chapterIndex, chapterTitle, maxTimeout } =
+    options
+
+  if (existsSync(outputFilePath)) {
+    console.log(`${chapterTitle} hits cache.`)
+
+    return
+  }
+
+  await timeout(Math.floor(Math.random() * maxTimeout))
+
+  const needNavigation = await page.evaluate(chapterIndex => {
+    const list = document.querySelector('.readerCatalog_list')
+    const selectedListItem = document.querySelector(
+      '.readerCatalog_list_item_selected'
+    )
+    const currentChapterIndex = Array.from(list?.children ?? []).findIndex(
+      item => item === selectedListItem
+    )
+    return currentChapterIndex !== chapterIndex
+  }, chapterIndex)
+
+  if (needNavigation) {
+    const openCatalogueSuccess = await openCatalogue(page)
+    if (!openCatalogueSuccess) {
+      console.log('Failed to open catalogue.')
+
+      await page.close()
+
+      return
+    }
+
+    const position = await page.evaluate(listItemIndex => {
+      const list = document.querySelector('.readerCatalog_list')
+      const listItem = list?.children[listItemIndex]
+      if (!listItem) {
+        return null
+      }
+
+      listItem.scrollIntoView({
+        behavior: 'smooth',
+      })
+
+      const rect = listItem.getBoundingClientRect()
+
+      return { x: rect.x, y: rect.y }
+    }, chapterIndex)
+
+    if (!position) {
+      console.log('Failed to get chapter list item position.')
+
+      await page.close()
+
+      return
+    }
+
+    await Promise.all([
+      page.waitForNavigation(),
+      page.mouse.click(position.x + 10, position.y + 10),
+    ])
+  }
+
+  const isReady = await page.waitForFunction(
+    `window.${INITIAL_STATE_REF}.reader.chapterContentState === "DONE"`
+  )
+  if (!isReady) {
+    await page.close()
+
+    console.log(`${chapterTitle}'s content state not ready.`)
+
+    return
+  }
+
+  await timeout(Math.floor(Math.random() * maxTimeout))
+
+  await page.evaluate(() => {
+    window.scrollTo({
+      top: Math.floor(Math.random() * window.innerHeight),
+      left: 0,
+      behavior: 'smooth',
+    })
   })
 
-  if (login) {
-    const cookies = await page.cookies(WEREAD_URL)
+  const currentSectionHtml = await page.evaluate(
+    (INITIAL_STATE_REF, DECRYPTION) => {
+      // @ts-ignore
+      const stateRef = window[INITIAL_STATE_REF] as State
+      // @ts-ignore
+      const decryption = window[DECRYPTION] as Decryption
 
-    cache.set('cookies', cookies)
+      const { chapterContentHtml, bookId, currentChapter, currentSectionIdx } =
+        stateRef.reader
+      const currentSection = chapterContentHtml.at(currentSectionIdx)
 
-    const isReady = await page.waitForFunction(
-      `window.${INITIAL_STATE_REF}.reader.chapterContentState === "DONE"`,
-      {
-        timeout: 4000,
+      if (!currentSection) {
+        return
       }
-    )
-    if (!isReady) {
-      console.log('Chapter content state not ready.')
+
+      const currentSectionHtml = decryption(
+        currentSection.value,
+        bookId,
+        currentChapter.chapterUid,
+        currentSectionIdx
+      )
+
+      return currentSectionHtml
+    },
+    INITIAL_STATE_REF,
+    DECRYPTION
+  )
+
+  if (!currentSectionHtml) {
+    console.log(`${chapterTitle}'s section html does not exist.`)
+
+    await page.close()
+
+    return
+  }
+
+  const $ = load(currentSectionHtml)
+
+  const contents = $('body').text()
+
+  await fs.writeFile(outputFilePath, contents, {
+    encoding: 'utf8',
+  })
+}
+
+const beginRead = async (page: Page) => {
+  const beginReadButton = await page.waitForSelector('text/开始阅读')
+  if (!beginReadButton) {
+    console.log('Failed to find begin read button.')
+
+    await page.close()
+
+    return
+  }
+
+  await Promise.all([page.waitForNavigation(), beginReadButton.click()])
+}
+
+const main = async () => {
+  const browser = await puppeteer.launch({
+    defaultViewport: { width: 1440, height: 768 },
+    executablePath: '/usr/bin/chromium',
+    headless: false,
+  })
+
+  const areYouChromeHeadless = await isChromeHeadless(browser)
+  if (areYouChromeHeadless) {
+    console.log('You are Chrome headless.')
+  }
+
+  const { url } = await prompts({
+    type: 'text',
+    name: 'url',
+    message: 'Please input book detail page url.',
+  })
+  if (
+    typeof url !== 'string' ||
+    !url.startsWith(WEREAD_URL) ||
+    !isBookDetailPage(url)
+  ) {
+    await browser.close()
+
+    console.log('Url is invalid.')
+
+    return
+  }
+
+  const page = await createPage(browser)
+
+  await page.goto(url)
+
+  let login = await isLogin(page)
+  if (!login) {
+    const answers = await prompts({
+      type: 'confirm',
+      name: 'login',
+      message: 'Please login.',
+    })
+    login = answers.login
+
+    if (!login) {
+      await browser.close()
 
       return
     }
+  }
 
-    const currentSectionHtml = await page.evaluate(
-      (INITIAL_STATE_REF, DECRYPTION) => {
-        // @ts-ignore
-        const stateRef = window[INITIAL_STATE_REF] as State
-        // @ts-ignore
-        const decryption = window[DECRYPTION] as Decryption
+  const cookies = await page.cookies(WEREAD_URL)
+  cache.set('cookies', cookies)
 
-        const {
-          chapterContentHtml,
-          bookId,
-          currentChapter,
-          currentSectionIdx,
-        } = stateRef.reader
-        const currentSection = chapterContentHtml.at(currentSectionIdx)
+  await beginRead(page)
 
-        if (!currentSection) {
-          return
-        }
+  const { bookTitle, chapters } = await page.evaluate(INITIAL_STATE_REF => {
+    // @ts-ignore
+    const stateRef = window[INITIAL_STATE_REF] as State
 
-        const currentSectionHtml = decryption(
-          currentSection.value,
-          bookId,
-          currentChapter.chapterUid,
-          currentSectionIdx
-        )
+    const chapters = stateRef.reader.chapterInfos.map(chapterInfo => ({
+      level: chapterInfo.level,
+      title: chapterInfo.title,
+    }))
 
-        return currentSectionHtml
-      },
-      INITIAL_STATE_REF,
-      DECRYPTION
-    )
-
-    if (!currentSectionHtml) {
-      console.log('Current section html does not exist.')
-
-      return
+    return {
+      bookTitle: stateRef.reader.bookInfo.title,
+      chapters,
     }
+  }, INITIAL_STATE_REF)
 
-    const state = (await page.evaluate(`window.${INITIAL_STATE_REF}`)) as State
+  const { selectedChapterIndexes } = await prompts({
+    type: 'multiselect',
+    name: 'selectedChapterIndexes',
+    message: 'Please pick chapters.',
+    choices: chapters.map((chapter, index) => ({
+      title: new Array(chapter.level - 1).fill(' ').join('') + chapter.title,
+      value: index,
+    })),
+    hint: '- Space to select. Return to submit',
+  })
 
-    await fs.promises.writeFile(
-      path.join(
-        OUTPUT_DIR,
-        String(state.reader.currentChapter.chapterUid) + '.html'
-      ),
-      currentSectionHtml,
-      {
-        encoding: 'utf8',
-      }
+  await fs.mkdir(path.join(OUTPUT_DIR, bookTitle), {
+    recursive: true,
+  })
+
+  const outputFilePaths: string[] = []
+  let total = selectedChapterIndexes.length
+  let downloaded = 0
+
+  for await (const chapterIndex of selectedChapterIndexes as number[]) {
+    const chapterTitle = chapters.at(chapterIndex)?.title ?? 'unknown'
+
+    const outputFilePath = path.join(
+      OUTPUT_DIR,
+      bookTitle,
+      `${chapterIndex}_${chapterTitle}.txt`
     )
 
+    await downloadChapter({
+      page,
+      outputFilePath,
+      chapterIndex,
+      chapterTitle,
+      maxTimeout: 3 * SECOND,
+    })
+
+    outputFilePaths.push(outputFilePath)
+
+    downloaded++
+
+    console.log(Math.floor((downloaded / total) * 100) + '%')
+  }
+
+  const combineAnswers = await prompts({
+    type: 'confirm',
+    name: 'combine',
+    message: 'Combine output text file?',
+  })
+  if (combineAnswers.combine) {
+    const outputDir = path.join(OUTPUT_DIR, bookTitle, 'combines')
+
+    await fs.mkdir(outputDir, {
+      recursive: true,
+    })
+
+    const contents = await Promise.all(
+      outputFilePaths.map(outputFilePath =>
+        fs.readFile(outputFilePath, {
+          encoding: 'utf8',
+        })
+      )
+    )
+    const combineContent = contents.join('\n')
+    await fs.writeFile(path.join(outputDir, 'index.txt'), combineContent)
+  }
+
+  const answers = await prompts({
+    type: 'confirm',
+    name: 'close',
+    message: 'Close page?',
+  })
+
+  if (answers.close) {
     await browser.close()
   }
 }

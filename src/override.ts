@@ -3,6 +3,7 @@ import rehypeParse from 'rehype-parse'
 import rehypeStringify from 'rehype-stringify'
 import { visit } from 'unist-util-visit'
 import * as acorn from 'acorn'
+import * as walk from 'acorn-walk'
 import * as astring from 'astring'
 import type { Root } from 'hast'
 import {
@@ -56,15 +57,65 @@ export const overrideUtils = (url: string, body: string) => {
 
   if (!isUtils) return body
 
-  const search = "[_0x610b('0x63')]="
-  const suffix = 'function'
-  const startIndex = body.indexOf(search + suffix)
+  const ast = acorn.parse(body, { ecmaVersion: 6 })
 
-  if (startIndex === -1) return body
+  let insertIndex = -1
+  let len = 0
+  let originIndex = 0
+  let offsetIndex = 0
+  walk.ancestor(ast, {
+    Literal(node, _state, ancestors) {
+      if (insertIndex !== -1) {
+        return
+      }
 
-  const endIndex = startIndex + search.length
+      if (node.value === 'decryption') {
+        const parent = ancestors.at(-2)
+
+        if (parent?.type === 'MemberExpression') {
+          if (ancestors.at(-5)?.type === 'ExpressionStatement') {
+            insertIndex = parent?.end ?? -1
+          }
+
+          return
+        }
+
+        len = (parent as acorn.ArrayExpression).elements.length
+        originIndex = (parent as acorn.ArrayExpression).elements.findIndex(
+          el => el === node
+        )
+      } else if (
+        ast.body.findIndex(node => node === ancestors.at(1)) === 1 &&
+        typeof node.value === 'number'
+      ) {
+        offsetIndex = node.value
+      }
+    },
+  })
+
+  if (insertIndex === -1) {
+    let index =
+      originIndex >= offsetIndex
+        ? originIndex - offsetIndex
+        : len - offsetIndex + originIndex
+    let hexIndex = index.toString(16)
+
+    walk.ancestor(ast, {
+      Literal(node, _state, ancestors) {
+        if (node.value === '0x' + hexIndex) {
+          insertIndex = ancestors.at(-3)?.end ?? -1
+        }
+      },
+    })
+  }
+
+  if (insertIndex === -1) {
+    return body
+  }
 
   return (
-    body.slice(0, endIndex) + `window.${DECRYPTION}=` + body.slice(endIndex)
+    body.slice(0, insertIndex) +
+    `=window.${DECRYPTION}` +
+    body.slice(insertIndex)
   )
 }

@@ -315,7 +315,8 @@ const downloadChapter = async (options: {
 }
 
 const beginRead = async (page: Page) => {
-  const beginReadButton = await page.waitForSelector('text/开始阅读')
+  const beginReadSelector = 'text/开始阅读'
+  const beginReadButton = await page.waitForSelector(beginReadSelector)
   if (!beginReadButton) {
     console.log('Failed to find begin read button.')
 
@@ -324,7 +325,7 @@ const beginRead = async (page: Page) => {
     return
   }
 
-  await Promise.all([page.waitForNavigation(), beginReadButton.click()])
+  await Promise.all([page.waitForNavigation(), page.click(beginReadSelector)])
 }
 
 const main = async () => {
@@ -414,9 +415,14 @@ const main = async () => {
   const outputFilePaths: string[] = []
   let total = selectedChapterIndexes.length
   let downloaded = 0
+  let fistChapterTitle: string | null = null
 
   for await (const chapterIndex of selectedChapterIndexes as number[]) {
     const chapterTitle = chapters.at(chapterIndex)?.title ?? 'unknown'
+
+    if (fistChapterTitle === null) {
+      fistChapterTitle = chapterTitle
+    }
 
     const outputFilePath = path.join(
       OUTPUT_DIR,
@@ -459,7 +465,10 @@ const main = async () => {
       )
     )
     const combineContent = contents.join('\n')
-    await fs.writeFile(path.join(outputDir, 'index.txt'), combineContent)
+    await fs.writeFile(
+      path.join(outputDir, fistChapterTitle + '.txt'),
+      combineContent
+    )
   }
 
   const answers = await prompts({

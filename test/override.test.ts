@@ -8,7 +8,7 @@ const cache = new Cache('override-test', { maxAge: DAY })
 
 test('overrideDocument()', async () => {
   const chapterUrl =
-    'https://weread.qq.com/web/reader/a0b32400813ab8babg0111cak16732dc0161679091c5aeb1'
+    'https://weread.qq.com/web/reader/d0b32590813ab9600g014ac7#outline?noScroll=1'
 
   const chapterHtml = await cache.getOrElse('chapter-html', async () => {
     const response = await fetch(chapterUrl)
@@ -23,7 +23,7 @@ test('overrideDocument()', async () => {
 
 test('overrideUtils()', async () => {
   const scriptUrl =
-    'https://weread-1258476243.file.myqcloud.com/web/wrwebnjlogic/js/utils.b7bf8a23.js'
+    'https://cdn.weread.qq.com/web/wrwebnjlogic/js/utils.e8c39a94.js'
 
   const scriptContent = await cache.getOrElse('utils-script', async () => {
     const response = await fetch(scriptUrl)

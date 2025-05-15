@@ -1,5 +1,5 @@
 import path from 'node:path'
-import fs from 'node:fs/promises'
+import fs from 'node:fs'
 import { DATA_DIR } from './common'
 
 interface CacheOptions {
@@ -14,12 +14,19 @@ export class Cache {
     private readonly options: CacheOptions = { maxAge: 0 }
   ) {
     this.cacheFilePath = path.join(DATA_DIR, 'cache', this.namespace + '.json')
+
+    if (!fs.existsSync(this.cacheFilePath)) {
+      fs.mkdirSync(path.dirname(this.cacheFilePath), {
+        recursive: true,
+      })
+      fs.writeFileSync(this.cacheFilePath, '{}', 'utf-8')
+    }
   }
 
   async get<T = unknown>(key: string): Promise<T | null> {
     if (this.options.maxAge > 0) {
       try {
-        const stat = await fs.stat(this.cacheFilePath)
+        const stat = await fs.promises.stat(this.cacheFilePath)
         if (Date.now() - stat.mtime.getTime() > this.options.maxAge) {
           return null
         }
@@ -32,7 +39,9 @@ export class Cache {
 
     let content = ''
     try {
-      content = await fs.readFile(this.cacheFilePath, { encoding: 'utf8' })
+      content = await fs.promises.readFile(this.cacheFilePath, {
+        encoding: 'utf8',
+      })
     } catch (error) {
       if ((error as any).code !== 'ENOENT') {
         console.error(error)
@@ -62,7 +71,9 @@ export class Cache {
   async set<T = unknown>(key: string, value: T): Promise<T> {
     let content = ''
     try {
-      content = await fs.readFile(this.cacheFilePath, { encoding: 'utf8' })
+      content = await fs.promises.readFile(this.cacheFilePath, {
+        encoding: 'utf8',
+      })
     } catch (error) {
       if ((error as any).code !== 'ENOENT') {
         console.error(error)
@@ -80,9 +91,13 @@ export class Cache {
 
     store[key] = value
 
-    await fs.writeFile(this.cacheFilePath, JSON.stringify(store, null, 2), {
-      encoding: 'utf8',
-    })
+    await fs.promises.writeFile(
+      this.cacheFilePath,
+      JSON.stringify(store, null, 2),
+      {
+        encoding: 'utf8',
+      }
+    )
 
     return value
   }

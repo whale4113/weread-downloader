@@ -5,7 +5,8 @@
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "test": "vitest"
+    "test": "vitest",
+    "start": "bun run src/index.ts"
   },
   "keywords": [],
   "author": "",

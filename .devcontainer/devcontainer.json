@@ -5,9 +5,9 @@
 	"image": "mcr.microsoft.com/devcontainers/typescript-node:1-20-bookworm",
 	"features": {
 		"ghcr.io/devcontainers/features/desktop-lite:1": {},
-		"ghcr.io/lujunji4113/features/deno:latest": {},
-		"ghcr.io/lujunji4113/features/bun:latest": {},
-		"ghcr.io/lujunji4113/features/chromium:latest": {}
+		"ghcr.io/whale4113/features/deno:latest": {},
+		"ghcr.io/whale4113/features/bun:latest": {},
+		"ghcr.io/whale4113/features/chromium:latest": {}
 	},
 	"forwardPorts": [
 		6080

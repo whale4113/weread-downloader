@@ -85,10 +85,6 @@ const isLogin = async (page: Page) => {
   }
 }
 
-const isBookDetailPage = (url: string) => {
-  return url.includes('bookDetail')
-}
-
 const createPage = async (browser: Browser) => {
   const page = await browser.newPage()
 
@@ -174,7 +170,7 @@ const openCatalogue = async (page: Page): Promise<boolean> => {
     return false
   }
 
-  await catalogueButton.click()
+  await page.click('.readerControls_item.catalog')
 
   return true
 }
@@ -197,9 +193,25 @@ const downloadChapter = async (options: {
 
   await timeout(Math.floor(Math.random() * maxTimeout))
 
+  const isHorizontalReader = await page.evaluate(() => {
+    return (
+      document.querySelector('.readerControls_item.isHorizontalReader') !== null
+    )
+  })
+  if (isHorizontalReader) {
+    await Promise.all([
+      page.waitForNavigation(),
+      page.click('.readerControls_item.isHorizontalReader'),
+    ])
+  }
+
   const needNavigation = await page.evaluate(chapterIndex => {
     const list = document.querySelector('.readerCatalog_list')
-    const selectedListItem = document.querySelector(
+    if (!list) {
+      return null
+    }
+
+    const selectedListItem = list.querySelector(
       '.readerCatalog_list_item_selected'
     )
     const currentChapterIndex = Array.from(list?.children ?? []).findIndex(
@@ -229,6 +241,8 @@ const downloadChapter = async (options: {
         behavior: 'smooth',
       })
 
+      listItem.setAttribute('id', `chapter-${listItemIndex}`)
+
       const rect = listItem.getBoundingClientRect()
 
       return { x: rect.x, y: rect.y }
@@ -244,8 +258,10 @@ const downloadChapter = async (options: {
 
     await Promise.all([
       page.waitForNavigation(),
-      page.mouse.click(position.x + 10, position.y + 10),
+      page.click(`#chapter-${chapterIndex}`),
     ])
+
+    await timeout(Math.floor(Math.random() * maxTimeout))
   }
 
   const isReady = await page.waitForFunction(
@@ -258,8 +274,6 @@ const downloadChapter = async (options: {
 
     return
   }
-
-  await timeout(Math.floor(Math.random() * maxTimeout))
 
   await page.evaluate(() => {
     window.scrollTo({
@@ -281,7 +295,11 @@ const downloadChapter = async (options: {
       const currentSection = chapterContentHtml.at(currentSectionIdx)
 
       if (!currentSection) {
-        return
+        return `<html><body>${
+          document
+            .querySelector('meta[name="description"]')
+            ?.getAttribute('content') ?? ''
+        }</body></html>`
       }
 
       const currentSectionHtml = decryption(
@@ -345,11 +363,7 @@ const main = async () => {
     name: 'url',
     message: 'Please input book detail page url.',
   })
-  if (
-    typeof url !== 'string' ||
-    !url.startsWith(WEREAD_URL) ||
-    !isBookDetailPage(url)
-  ) {
+  if (typeof url !== 'string' || !url.startsWith(WEREAD_URL)) {
     await browser.close()
 
     console.log('Url is invalid.')

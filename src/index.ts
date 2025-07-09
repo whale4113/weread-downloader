@@ -61,19 +61,6 @@ interface Decryption {
   ): string
 }
 
-const isChromeHeadless = async (browser: Browser) => {
-  const page = await browser.newPage()
-
-  await page.goto('https://arh.antoinevastel.com/bots/areyouheadless')
-
-  const textSelector = await page.waitForSelector('#res')
-  const fullTitle = await textSelector?.evaluate(el => el.textContent)
-
-  await page.close()
-
-  return fullTitle !== 'You are not Chrome headless'
-}
-
 const isLogin = async (page: Page) => {
   try {
     const el = await page.waitForSelector('.wr_avatar', {
@@ -205,7 +192,7 @@ const downloadChapter = async (options: {
     ])
   }
 
-  const needNavigation = await page.evaluate(chapterIndex => {
+  const needNavigation = await page.evaluate(_chapterTitle => {
     const list = document.querySelector('.readerCatalog_list')
     if (!list) {
       return null
@@ -214,11 +201,9 @@ const downloadChapter = async (options: {
     const selectedListItem = list.querySelector(
       '.readerCatalog_list_item_selected'
     )
-    const currentChapterIndex = Array.from(list?.children ?? []).findIndex(
-      item => item === selectedListItem
-    )
-    return currentChapterIndex !== chapterIndex
-  }, chapterIndex)
+
+    return selectedListItem?.textContent !== _chapterTitle
+  }, chapterTitle)
 
   if (needNavigation) {
     const openCatalogueSuccess = await openCatalogue(page)
@@ -230,23 +215,29 @@ const downloadChapter = async (options: {
       return
     }
 
-    const position = await page.evaluate(listItemIndex => {
-      const list = document.querySelector('.readerCatalog_list')
-      const listItem = list?.children[listItemIndex]
-      if (!listItem) {
-        return null
-      }
+    const position = await page.evaluate(
+      (_chapterIndex, _chapterTitle) => {
+        const list = document.querySelector('.readerCatalog_list')
+        const listItem = Array.from(list?.children ?? []).find(
+          item => item.textContent === _chapterTitle
+        )
+        if (!listItem) {
+          return null
+        }
 
-      listItem.scrollIntoView({
-        behavior: 'smooth',
-      })
+        listItem.scrollIntoView({
+          behavior: 'smooth',
+        })
 
-      listItem.setAttribute('id', `chapter-${listItemIndex}`)
+        listItem.setAttribute('id', `chapter-${_chapterIndex}`)
 
-      const rect = listItem.getBoundingClientRect()
+        const rect = listItem.getBoundingClientRect()
 
-      return { x: rect.x, y: rect.y }
-    }, chapterIndex)
+        return { x: rect.x, y: rect.y }
+      },
+      chapterIndex,
+      chapterTitle
+    )
 
     if (!position) {
       console.log('Failed to get chapter list item position.')
@@ -348,15 +339,12 @@ const beginRead = async (page: Page) => {
 
 const main = async () => {
   const browser = await puppeteer.launch({
-    defaultViewport: { width: 1440, height: 768 },
-    executablePath: '/usr/bin/chromium',
     headless: false,
+    defaultViewport: { width: 0, height: 0 },
+    executablePath:
+      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    userDataDir: './user-data',
   })
-
-  const areYouChromeHeadless = await isChromeHeadless(browser)
-  if (areYouChromeHeadless) {
-    console.log('You are Chrome headless.')
-  }
 
   const { url } = await prompts({
     type: 'text',
@@ -390,9 +378,6 @@ const main = async () => {
       return
     }
   }
-
-  const cookies = await page.cookies(WEREAD_URL)
-  cache.set('cookies', cookies)
 
   await beginRead(page)
 

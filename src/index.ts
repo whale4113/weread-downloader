@@ -14,6 +14,7 @@ import {
   isUtilsScriptUrl,
 } from './common'
 import { overrideDocument, overrideUtils } from './override'
+import { sanitizeFileName } from './sanitize'
 import { Cache } from './cache'
 import { SECOND } from './datetime'
 
@@ -343,7 +344,7 @@ const main = async () => {
     defaultViewport: { width: 0, height: 0 },
     executablePath:
       '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-    userDataDir: './user-data',
+    userDataDir: './data/user-data',
   })
 
   const { url } = await prompts({
@@ -407,7 +408,9 @@ const main = async () => {
     hint: '- Space to select. Return to submit',
   })
 
-  await fs.mkdir(path.join(OUTPUT_DIR, bookTitle), {
+  const sanitizedBookTitle = sanitizeFileName(bookTitle)
+
+  await fs.mkdir(path.join(OUTPUT_DIR, sanitizedBookTitle), {
     recursive: true,
   })
 
@@ -418,6 +421,7 @@ const main = async () => {
 
   for await (const chapterIndex of selectedChapterIndexes as number[]) {
     const chapterTitle = chapters.at(chapterIndex)?.title ?? 'unknown'
+    const sanitizedChapterTitle = sanitizeFileName(chapterTitle)
 
     if (fistChapterTitle === null) {
       fistChapterTitle = chapterTitle
@@ -425,8 +429,8 @@ const main = async () => {
 
     const outputFilePath = path.join(
       OUTPUT_DIR,
-      bookTitle,
-      `${chapterIndex}_${chapterTitle}.txt`
+      sanitizedBookTitle,
+      `${chapterIndex}_${sanitizedChapterTitle}.txt`
     )
 
     await downloadChapter({
@@ -450,7 +454,7 @@ const main = async () => {
     message: 'Combine output text file?',
   })
   if (combineAnswers.combine) {
-    const outputDir = path.join(OUTPUT_DIR, bookTitle, 'combines')
+    const outputDir = path.join(OUTPUT_DIR, sanitizedBookTitle, 'combines')
 
     await fs.mkdir(outputDir, {
       recursive: true,
@@ -465,7 +469,7 @@ const main = async () => {
     )
     const combineContent = contents.join('\n')
     await fs.writeFile(
-      path.join(outputDir, fistChapterTitle + '.txt'),
+      path.join(outputDir, sanitizeFileName(fistChapterTitle ?? '') + '.txt'),
       combineContent
     )
   }

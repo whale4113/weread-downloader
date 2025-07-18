@@ -203,6 +203,15 @@ const downloadChapter = async (options: {
       '.readerCatalog_list_item_selected'
     )
 
+    if (
+      selectedListItem?.firstElementChild?.classList.contains(
+        'readerCatalog_list_item_level_3'
+      ) &&
+      selectedListItem.previousSibling?.textContent === _chapterTitle
+    ) {
+      return false
+    }
+
     return selectedListItem?.textContent !== _chapterTitle
   }, chapterTitle)
 

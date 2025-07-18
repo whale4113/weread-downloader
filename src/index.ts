@@ -354,6 +354,7 @@ const main = async () => {
     executablePath:
       '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
     userDataDir: './data/user-data',
+    args: ['--disable-features=MacAppCodeSignClone'],
   })
 
   const { url } = await prompts({

@@ -16,27 +16,31 @@
 
 ### 1. 环境准备
 
--   安装 [Node.js](https://nodejs.org/)
 -   安装 [Bun](https://bun.sh/)
 -   安装 [Google Chrome](https://www.google.com/chrome/) 浏览器
-
-    > **Note**
-    > 
-    > 本项目默认使用 MacOS 系统的 Chrome 路径，如果你使用其他操作系统，请手动修改 `src/index.ts` 文件中 `executablePath` 选项的值为你电脑上 Chrome 的安装路径。
 
 ### 2. 安装依赖
 
 ```bash
-pnpm install
+bun install
 ```
 
 ### 3. 运行程序
 
 ```bash
-pnpm run start
+bun start
 ```
 
-运行程序后，会根据命令行提示进行操作：
+> **Note**
+> 
+> 本项目默认使用 MacOS 系统的 Chrome 路径，如果你使用其他操作系统，请手动修改 `src/index.ts` 文件中 `executablePath` 选项的值为你电脑上 Chrome 的路径。
+> 常见操作系统，Chrome 的可能路径：
+> - Windows: `C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe`
+> - MacOS: `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`
+
+### 4. 终端交互
+
+运行程序后，根据命令行提示进行操作：
 
 1.  **输入书籍链接**
     系统会提示您输入书籍的详情页 URL，例如：
@@ -44,7 +48,7 @@ pnpm run start
     ✔ Please input book detail page url. … https://weread.qq.com/web/bookDetail/fa3322105ca0ecfa382cac6
     ```
 
-    如果此时未登录，页面会导航至登录页。扫码登录后，在终端按 Enter 键确认。
+    页面打开后，如果未登录过，需要扫码登录后，在终端按 Enter 键确认登录过。
 
 2.  **选择章节**
     输入链接后，程序会自动获取书籍章节列表。您可以根据提示进行选择：

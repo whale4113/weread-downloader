@@ -1,0 +1,74 @@
+{
+  "$ref": "#/definitions/Config",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "Config": {
+      "additionalProperties": false,
+      "properties": {
+        "puppeteer": {
+          "additionalProperties": false,
+          "properties": {
+            "launch": {
+              "additionalProperties": false,
+              "properties": {
+                "executablePath": {
+                  "description": "Path to a browser executable to use instead of the bundled Chromium. Note that Puppeteer is only guaranteed to work with the bundled Chromium, so use this setting at your own risk.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            }
+          },
+          "required": [
+            "launch"
+          ],
+          "type": "object"
+        },
+        "weread": {
+          "additionalProperties": false,
+          "properties": {
+            "books": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "chapters": {
+                    "description": "要下载的章节名称",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "combine": {
+                    "default": false,
+                    "description": "是否合并为一个文件",
+                    "type": "boolean"
+                  },
+                  "id": {
+                    "description": "书籍 ID",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "enableCache": {
+              "default": false,
+              "description": "是否使用缓存（output 中已经存在的章节，不会再下载）",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "books"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "puppeteer",
+        "weread"
+      ],
+      "type": "object"
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "puppeteer": {
+    "launch": {}
+  },
+  "weread": {
+    "enableCache": false,
+    "books": [
+      {
+        "id": "1623288055262216242d0f2",
+        "chapters": ["第1章"]
+      },
+      {
+        "id": "fa3322105ca0ecfa382cac6",
+        "chapters": ["...", "文化偏至论"]
+      },
+      {
+        "id": "f1e328e072710bfaf1e87e9",
+        "chapters": [
+          "第一章 童年",
+          "...",
+          "第六章 霸业的开始",
+          "第七章 霸业的开始"
+        ]
+      }
+    ]
+  }
+}

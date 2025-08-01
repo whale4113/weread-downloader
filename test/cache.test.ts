@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest'
-import { Cache } from '../src/cache'
-import { SECOND } from '../src/datetime'
+import { Cache } from '../src/utils/cache'
+import { SECOND } from '../src/utils/datetime'
 
 test('Cache', async () => {
   const cache = new Cache('cache-test')

@@ -1,8 +1,8 @@
 import { expect, test } from 'vitest'
-import { DECRYPTION, INITIAL_STATE_REF } from '../src/common'
+import { DECRYPTION, INITIAL_STATE_REF } from '../src/override'
 import { overrideDocument, overrideUtils } from '../src/override'
-import { Cache } from '../src/cache'
-import { DAY } from '../src/datetime'
+import { Cache } from '../src/utils/cache'
+import { DAY } from '../src/utils/datetime'
 
 const cache = new Cache('override-test', { maxAge: DAY })
 

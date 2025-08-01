@@ -1,6 +1,10 @@
 import path from 'node:path'
 import fs from 'node:fs'
-import { DATA_DIR } from './common'
+import url from 'node:url'
+
+export const DATA_DIR: string = url.fileURLToPath(
+  new URL('../../data', import.meta.url)
+)
 
 interface CacheOptions {
   maxAge: number

@@ -6,14 +6,18 @@ import * as acorn from 'acorn'
 import * as walk from 'acorn-walk'
 import * as astring from 'astring'
 import type { Root } from 'hast'
-import {
-  DECRYPTION,
-  INITIAL_STATE_REF,
-  WEREAD_URL,
-  isUtilsScriptUrl,
-} from './common'
+import { WEREAD_URL } from './constants'
 
-export const overrideDocument = async (url: string, body: string) => {
+export const INITIAL_STATE_REF = '__INITIAL_STATE__REF__'
+export const DECRYPTION = '__DECRYPTION__'
+
+export const isUtilsScriptUrl = (url: string): boolean =>
+  url.includes('wrwebnjlogic') && url.includes('utils')
+
+export const overrideDocument = async (
+  url: string,
+  body: string
+): Promise<string> => {
   if (!url.startsWith(WEREAD_URL)) return body
 
   const file = await unified()
@@ -52,7 +56,7 @@ export const overrideDocument = async (url: string, body: string) => {
   return String(file)
 }
 
-export const overrideUtils = (url: string, body: string) => {
+export const overrideUtils = (url: string, body: string): string => {
   const isUtils = isUtilsScriptUrl(url)
 
   if (!isUtils) return body

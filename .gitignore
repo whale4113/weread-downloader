@@ -4,3 +4,5 @@ output
 
 data/cache/*
 data/user-data
+
+config/config.json

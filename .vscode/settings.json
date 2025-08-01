@@ -1,3 +1,9 @@
 {
-  "biome.enabled": false
+  "biome.enabled": false,
+  "json.schemas": [
+    {
+      "fileMatch": ["config/*.json"],
+      "url": "./config/config_schema.json"
+    }
+  ]
 }

@@ -4,7 +4,14 @@
     "module": "es2022",
     "moduleResolution": "bundler",
     "strict": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "isolatedDeclarations": true,
+    "composite": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "~config/*": ["config/*"]
+    }
   },
   "exclude": ["node_modules"]
 }

@@ -1,6 +1,8 @@
 {
   "puppeteer": {
-    "launch": {}
+    "launch": {
+      "executablePath": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+    }
   },
   "weread": {
     "enableCache": false,

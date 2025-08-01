@@ -38,16 +38,18 @@ bun start
 > - Windows: `C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe`
 > - MacOS: `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`
 
-### 4. (可选) 使用配置文件
+### 4. 使用配置文件
 
-除了通过命令行交互式输入，你也可以通过在 `config` 目录下创建 `config.json` 文件来配置程序的行为。如果 `config.json` 文件中有配置 `books`，程序将读取该配置，并跳过交互式命令行交互。
+除了通过命令行交互式输入，你也可以通过在 `config` 目录下创建 `config.json` 文件来配置程序的行为。如果 `config.json` 文件中有配置 `books`，程序将读取该配置，并跳过一些必要的交互式命令行交互。（如果你未登录过微信读书网页端，终端仍然会提示并等待你登录）。
 
 `config.example.json` 文件提供了一个配置示例：
 
 ```json
 {
   "puppeteer": {
-    "launch": {}
+    "launch": {
+      "executablePath": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+    }
   },
   "weread": {
     "enableCache": false,
@@ -76,14 +78,14 @@ bun start
 
 #### 配置项说明
 
--   `puppeteer.launch`: [Puppeteer 的 `launch` 方法的选项](https://pptr.dev/api/puppeteer.puppeteerlaunchoptions)。例如，你可以通过 `executablePath` 指定 Chrome 浏览器的路径。
+-   `puppeteer.launch`: 你可以通过 `executablePath` 指定 Chrome 浏览器的路径。
 -   `weread.enableCache`: 是否启用缓存，默认为 `false`。启用后，下次下载同一本书的同一章节时，如果发现 `output` 目录下已经存在该章节的文件，将直接跳过下载。
 -   `weread.books`: 要下载的书籍列表。
     -   `id`: 书籍的详情页 ID。
     -   `chapters`: 要下载的章节列表。如果列表包含 `...`，则表示下载从 `...` 前一个章节到后一个章节之间的所有章节。例如 `["第一章", "...", "第五章"]` 将会下载第一章到第五章的所有章节。
-    -   `combine`: (可选) 是否将下载的章节合并为一个文件，默认为 `false`。
+    -   `combine`: 是否将下载的章节合并为一个文件，默认为 `false`。
 
-### 5. 终端交互
+### 5. 终端交互（可选）
 
 运行程序后，根据命令行提示进行操作：
 

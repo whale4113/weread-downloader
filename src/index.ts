@@ -396,10 +396,12 @@ const main = async () => {
     // @ts-ignore
     const stateRef = window[INITIAL_STATE_REF] as State
 
-    const chapters = stateRef.reader.chapterInfos.map(chapterInfo => ({
-      level: chapterInfo.level,
-      title: chapterInfo.title,
-    }))
+    const chapters = stateRef.reader.chapterInfos.map(
+      (chapterInfo, chapterIndex) => ({
+        level: chapterInfo.level,
+        title: chapterInfo.title || `第${chapterIndex + 1}章`,
+      })
+    )
 
     return {
       bookTitle: stateRef.reader.bookInfo.title,

@@ -23,7 +23,7 @@ test('overrideDocument()', async () => {
 
 test('overrideUtils()', async () => {
   const scriptUrl =
-    'https://cdn.weread.qq.com/web/wrwebnjlogic/js/utils.e8c39a94.js'
+    'https://cdn.weread.qq.com/web/wrwebnjlogic/js/utils.0f849774.js'
 
   const scriptContent = await cache.getOrElse('utils-script', async () => {
     const response = await fetch(scriptUrl)

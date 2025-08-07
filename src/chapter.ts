@@ -68,6 +68,10 @@ export const downloadChapter = async (options: {
   }
 
   const needNavigation = await page.evaluate(_chapterTitle => {
+    const getReaderCatalogListItemTitle = (listItem: Element | null): string =>
+      listItem?.querySelector('.readerCatalog_list_item_title_text')
+        ?.textContent ?? ''
+
     const list = document.querySelector('.readerCatalog_list')
     if (!list) {
       return null
@@ -81,12 +85,13 @@ export const downloadChapter = async (options: {
       selectedListItem?.firstElementChild?.classList.contains(
         'readerCatalog_list_item_level_3'
       ) &&
-      selectedListItem.previousSibling?.textContent === _chapterTitle
+      getReaderCatalogListItemTitle(selectedListItem.previousElementSibling) ===
+        _chapterTitle
     ) {
       return false
     }
 
-    return selectedListItem?.textContent !== _chapterTitle
+    return getReaderCatalogListItemTitle(selectedListItem) !== _chapterTitle
   }, chapterTitle)
 
   if (needNavigation) {
@@ -101,9 +106,15 @@ export const downloadChapter = async (options: {
 
     const position = await page.evaluate(
       (_chapterIndex, _chapterTitle) => {
+        const getReaderCatalogListItemTitle = (
+          listItem: Element | null
+        ): string =>
+          listItem?.querySelector('.readerCatalog_list_item_title_text')
+            ?.textContent ?? ''
+
         const list = document.querySelector('.readerCatalog_list')
         const listItem = Array.from(list?.children ?? []).find(
-          item => item.textContent === _chapterTitle
+          item => getReaderCatalogListItemTitle(item) === _chapterTitle
         )
         if (!listItem) {
           return null

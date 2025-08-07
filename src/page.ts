@@ -14,10 +14,6 @@ export const createPage = async (browser: Browser): Promise<Page> => {
 
   const client = await page.createCDPSession()
 
-  await client.send('Fetch.enable', {
-    patterns: [{ requestStage: 'Response' }],
-  })
-
   client.on('Fetch.requestPaused', async (event): Promise<void> => {
     const {
       requestId,
@@ -74,6 +70,21 @@ export const createPage = async (browser: Browser): Promise<Page> => {
       requestId,
       interceptResponse,
     })
+  })
+
+  await client.send('Fetch.enable', {
+    patterns: [
+      {
+        urlPattern: 'https://weread.qq.com/*',
+        resourceType: 'Document',
+        requestStage: 'Response',
+      },
+      {
+        urlPattern: '*/wrwebnjlogic/js/utils*',
+        resourceType: 'Script',
+        requestStage: 'Response',
+      },
+    ],
   })
 
   return page

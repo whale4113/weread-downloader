@@ -64,54 +64,26 @@ export const overrideUtils = (url: string, body: string): string => {
   const ast = acorn.parse(body, { ecmaVersion: 6 })
 
   let insertIndex = -1
-  let len = 0
-  let originIndex = 0
-  let offsetIndex = 0
   walk.ancestor(ast, {
     Literal(node, _state, ancestors) {
-      if (insertIndex !== -1) {
-        return
-      }
-
-      if (node.value === 'decryption') {
-        const parent = ancestors.at(-2)
-
-        if (parent?.type === 'MemberExpression') {
-          if (ancestors.at(-5)?.type === 'ExpressionStatement') {
-            insertIndex = parent?.end ?? -1
-          }
-
-          return
-        }
-
-        len = (parent as acorn.ArrayExpression).elements.length
-        originIndex = (parent as acorn.ArrayExpression).elements.findIndex(
-          el => el === node
-        )
-      } else if (
-        ast.body.findIndex(node => node === ancestors.at(1)) === 1 &&
-        typeof node.value === 'number'
+      const parent = ancestors.at(-2)
+      if (
+        node.value === 'decrypt' &&
+        parent?.type === 'MemberExpression' &&
+        (parent as acorn.MemberExpression).object.type === 'MemberExpression' &&
+        ((parent as acorn.MemberExpression).object as acorn.MemberExpression)
+          .property.type === 'Literal' &&
+        (
+          ((parent as acorn.MemberExpression).object as acorn.MemberExpression)
+            .property as acorn.Literal
+        ).value === 'DES'
       ) {
-        offsetIndex = node.value
+        insertIndex =
+          ancestors.findLast(item => item.type === 'FunctionExpression')?.start ??
+          -1
       }
     },
   })
-
-  if (insertIndex === -1) {
-    let index =
-      originIndex >= offsetIndex
-        ? originIndex - offsetIndex
-        : len - offsetIndex + originIndex
-    let hexIndex = index.toString(16)
-
-    walk.ancestor(ast, {
-      Literal(node, _state, ancestors) {
-        if (node.value === '0x' + hexIndex) {
-          insertIndex = ancestors.at(-3)?.end ?? -1
-        }
-      },
-    })
-  }
 
   if (insertIndex === -1) {
     return body
@@ -119,7 +91,7 @@ export const overrideUtils = (url: string, body: string): string => {
 
   return (
     body.slice(0, insertIndex) +
-    `=window.${DECRYPTION}` +
+    `window.${DECRYPTION}=` +
     body.slice(insertIndex)
   )
 }
